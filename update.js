@@ -1,56 +1,116 @@
-/*! 0.1.3 обновление касс в связи со сменой ндс */
+/*! 0.2.0 обновление касс в связи со сменой ндс
+
+cscript update.min.js [[[<install>] <config>] <license>]
+
+<install>	- относительный путь к файлу установки драйвера или false для пропуска.
+<config>	- true если нужно внести изменения в настройки кассы или false для пропуска.
+<license>	- относительный путь к файлу лицензий для касс или false для пропуска.
+
+ */
 
 (function(wsh, undefined){// замыкаем что бы не сорить глобалы
-	var list, value, command, shell, driver, item, flag, error = 0;
+	var list, value, command, shell, fso, ts, driver, item, flag, install,
+		license, config = null, isConnect = null, isSilent = true,
+		dLine = '\r\n', dValue = '\t', error = 0;
 	
 	shell = new ActiveXObject('WScript.Shell');
-	// показываем сообщение пользователю
-	value = // сообщение для пользователя
-		'Через минуту на компьютер будет установлено обновление для ККМ. ' +
-		'Нужно будет закрыть кассу программы еФарма. Закрывать смену при этом не нужно. ' +
-		'Установка займёт три минуты. После этого вы сможете работать.';
-	command = 'shutdown /r /t 60 /c "' + value  + '"';
-	shell.run(command, 0, false);
-	wsh.sleep(30 * 1000);
-	command = 'shutdown /a';
-	shell.run(command, 0, true);
-	// принудительно завершаем работу кассовой програмы
+	fso = new ActiveXObject('Scripting.FileSystemObject'); 
+	// получаем путь к файлу установки драйвера
 	if(!error){// если нету ошибок
-		command = 'taskkill /F /IM ePlus.ARMCasherNew.exe /T';
-		shell.run(command, 0, true);
+		if(0 < wsh.arguments.length){// если передан параметр
+			value = wsh.arguments(0);
+			if(value && 'false' != value.toLowerCase()){// если задано
+				install = fso.getAbsolutePathName(value);
+			};
+		};
 	};
-	// удаляем все установленные версии драйвера
+	// получаем флаг для изменения настройки кассы
 	if(!error){// если нету ошибок
-		value = 'all "Штрих" "Драйвер ФР" "" "/verysilent"';
-		command = 'cscript uninstall.js ' + value;
-		shell.run(command, 0, true);
+		if(1 < wsh.arguments.length){// если передан параметр
+			value = wsh.arguments(1);
+			config = 'true' == value.toLowerCase();
+		};
 	};
-	// устанавливаем последнюю версию драйвера
+	// получаем путь к файлу лицензий для касс
 	if(!error){// если нету ошибок
-		command = 'driver.exe /verysilent';
-		value = shell.run(command, 0, true);
-		if(!value){// если комманда выполнена успешно
+		if(2 < wsh.arguments.length){// если передан параметр
+			value = wsh.arguments(2);
+			if(value && 'false' != value.toLowerCase()){// если задано
+				license = fso.getAbsolutePathName(value);
+			};
+		};
+	};
+	// проверяем наличее файла установки драйвера
+	if(!error && install){// если нужно выполнить
+		if(fso.fileExists(install)){// если файл существует
 		}else error = 1;
 	};
-	// создаём объект для зваимодейсивия с кассой
-	if(!error){// если нету ошибок
-		try{// пробуем подключиться к кассе
-			driver = new ActiveXObject('Addin.DrvFR');
-		}catch(e){error = 2;};
+	// проверяем наличее файла лицензий для касс
+	if(!error && license){// если нужно выполнить
+		if(fso.fileExists(license)){// если файл существует
+		}else error = 2;
 	};
-	// подключаемся к кассе
+	// вычисляем вспомогательные переменные
 	if(!error){// если нету ошибок
-		driver.Password = 30;
-		driver.GetECRStatus();
-		switch(driver.ResultCode){
-			case  0: flag = true; break;	// ккм доступна
-			case -1: flag = false; break;	// ккм не подключена
-			case -3: error = 3; break;		// ккм занята
-			default: error = 4;				// другие ошибки
+		isSilent = !install && !config && !license;
+	};
+	// показываем начальное сообщение пользователю
+	if(!isSilent){// если нужно выполнить
+		value = // сообщение для пользователя
+			'Через минуту на компьютер будет установлено обновление для ККМ. ' +
+			'Нужно будет закрыть кассу программы еФарма. Закрывать смену при этом не нужно. ' +
+			'Установка займёт три минуты. После этого вы сможете работать.';
+		command = 'shutdown /r /t 60 /c "' + value  + '"';
+		shell.run(command, 0, false);
+		wsh.sleep(30 * 1000);
+		command = 'shutdown /a';
+		shell.run(command, 0, true);
+	};	
+	// принудительно завершаем работу кассовой програмы
+	if(!error && !isSilent){// если нужно выполнить
+		command = 'taskkill /F /IM ePlus.ARMCasherNew.exe /T';
+		shell.run(command, 0, true);
+		wsh.sleep(1 * 1000);
+	};
+	// выполняем удаление и установку драйвера
+	if(install){// если нужно обновить драйвер
+		// удаляем все установленные версии драйвера
+		if(!error){// если нету ошибок
+			value = 'all "Штрих" "Драйвер ФР" "" "/verysilent"';
+			command = 'cscript uninstall.js ' + value;
+			shell.run(command, 0, true);
+		};
+		// устанавливаем последнюю версию драйвера
+		if(!error){// если нету ошибок
+			command = '"' + install + '" /verysilent';
+			value = shell.run(command, 0, true);
+			if(!value){// если комманда выполнена успешно
+			}else error = 3;
+		};
+	};
+	// готовимся к взаимодействию с кассой
+	if(config || license){// если нужно взаимодействать с кассой
+		// создаём объект для взаимодейсивия с кассой
+		if(!error){// если нету ошибок
+			try{// пробуем подключиться к кассе
+				driver = new ActiveXObject('Addin.DrvFR');
+			}catch(e){error = 4;};
+		};
+		// подключаемся к кассе
+		if(!error){// если нету ошибок
+			driver.Password = 30;
+			driver.GetECRStatus();
+			isConnect = false;
+			switch(driver.ResultCode){
+				case  0: isConnect = true; break;	// ккм доступна
+				case -1: break;						// ккм не подключена
+				case -3: error = 5; break;			// ккм занята
+				default: error = 6;					// другие ошибки
+			};
 		};
 	};
 	// изменяем данные в таблице кассы
-	if(!error && flag){// если нужно выполнить
+	if(!error && config && isConnect){// если нужно выполнить
 		driver.Password = 30;
 		list = [// изменяемые поля таблицы
 			// региональные настройки
@@ -81,24 +141,80 @@
 						else driver.ValueOfFieldInteger = item.value;
 						driver.WriteTable();// изменяем данные
 						if(!driver.ResultCode){// если данные изменены
-						}else error = 7;
+						}else error = 9;
 					};
-				}else error = 6;
-			}else error = 5;
+				}else error = 8;
+			}else error = 7;
 		};
 	};
-	// показываем сообщение пользователю
-	value = // сообщение для пользователя
-		'Установка обновления завершена. Можете продолжать работу. Вечером после закрытия смены, ' +
-		'закройте кассу программы еФарма, но не выключайте сам фискальный аппарат, на него будут ' +
-		'установлены обновления. На следующий рабочий день, после открытия смены, после первой ' +
-		'продажи необходимо сделать внесение в кассу программы еФарма, т.к. после установки обновений ' +
-		'это значение обнулится. При возникновении трудностей позвоните в ИТ отдел.';
-	command = 'shutdown /r /t 60 /c "' + value  + '"';
-	shell.run(command, 0, false);
-	wsh.sleep(45 * 1000);
-	command = 'shutdown /a';
-	shell.run(command, 0, true);
+	// выполняем дейсвия по активации лицензии
+	if(license){// если нужно активировать лицензию
+		// получаем содержимое файла лицензий
+		if(!error){// если нету ошибок
+			ts = fso.openTextFile(license, 1);
+			if(!ts.atEndOfStream){// если файл не пуст
+				value = ts.readAll();
+			}else error = 10;
+			ts.close();
+		};
+		// преобразовываем содержимое в список лицензий
+		if(!error){// если нету ошибок
+			list = value.split(dLine);
+			for(var i = 0, iLen = list.length; i < iLen && !error; i++){
+				list[i] = list[i].split(dValue);
+				if(3 == list[i].length){// лицензии успешно разделены
+					item = {// элимент данных
+						serial: list[i][0],		// серийный номер
+						license: list[i][1],	// лицензия
+						signature: list[i][2]	// подпись
+					};
+					list[i] = item;
+				};				
+			};
+		};
+		// ищем и активируем лицензию
+		if(!error){// если нету ошибок
+			driver.Password = 30;
+			// получаем длинный заводской номер
+			driver.ReadSerialNumber();
+			if(!driver.ResultCode){// если данные получены
+				flag = false;// активирована ли лицензия
+				for(var i = 0, iLen = list.length; i < iLen && !error; i++){
+					item =  list[i];// получаем очередной элимен
+					if(driver.SerialNumber == item.serial){// если найдена лицензия
+						driver.License = item.license;
+						driver.DigitalSign = item.signature;
+						// активируем лицензию на кассе
+						driver.WriteFeatureLicenses();
+						if(!driver.ResultCode){// если лицензия активирована
+							flag = true;// лицензия активирована
+						}else error = 12;
+					};
+				};
+			}else error = 11;
+		};
+		// проверяем активирована ли лицензия
+		if(!error){// если нету ошибок
+			if(flag){// если лицензия активирована
+			}else error = 13;
+		};
+	};
+	// показываем конечное сообщение пользователю
+	if(!isSilent){// если нужно выполнить
+		value = // основное сообщение для пользователя
+			'Установка обновления завершена. Можете продолжать работу.';
+		if(config) value += ' ' + // дополнительное сообщение для пользователя
+			'Вечером после закрытия смены, закройте кассу программы еФарма, ' +
+			'но не выключайте сам фискальный аппарат, на него будут установлены обновления. ' + 
+			'На следующий рабочий день, после открытия смены, после первой продажи ' +
+			'необходимо сделать внесение в кассу программы еФарма, т.к. после установки обновений ' +
+			'это значение обнулится. При возникновении трудностей создайте заявку в ИТ отдел.';
+		command = 'shutdown /r /t 60 /c "' + value  + '"';
+		shell.run(command, 0, false);
+		wsh.sleep(45 * 1000);
+		command = 'shutdown /a';
+		shell.run(command, 0, true);
+	};	
 	// завершаем сценарий кодом
 	wsh.quit(error);
 })(WSH);
