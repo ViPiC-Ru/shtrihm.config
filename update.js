@@ -1,4 +1,4 @@
-/*! 0.2.0 обновление касс в связи со сменой ндс
+/*! 0.2.1 обновление касс в связи со сменой ндс
 
 cscript update.min.js [[[<install>] <config>] <license>]
 
@@ -9,8 +9,8 @@ cscript update.min.js [[[<install>] <config>] <license>]
  */
 
 (function(wsh, undefined){// замыкаем что бы не сорить глобалы
-	var list, value, command, shell, fso, ts, driver, item, flag, install,
-		license, config = null, isConnect = null, isSilent = true,
+	var list, value, command, shell, fso, ts, driver, item, node, nodes, flag,
+		install, license, config = null, isConnect = null, isSilent = true,
 		dLine = '\r\n', dValue = '\t', error = 0;
 	
 	shell = new ActiveXObject('WScript.Shell');
@@ -70,7 +70,7 @@ cscript update.min.js [[[<install>] <config>] <license>]
 	if(!error && !isSilent){// если нужно выполнить
 		command = 'taskkill /F /IM ePlus.ARMCasherNew.exe /T';
 		shell.run(command, 0, true);
-		wsh.sleep(1 * 1000);
+		wsh.sleep(2 * 1000);
 	};
 	// выполняем удаление и установку драйвера
 	if(install){// если нужно обновить драйвер
@@ -79,6 +79,30 @@ cscript update.min.js [[[<install>] <config>] <license>]
 			value = 'all "Штрих" "Драйвер ФР" "" "/verysilent"';
 			command = 'cscript uninstall.js ' + value;
 			shell.run(command, 0, true);
+		};
+		// удаляем возможные старые версии
+		if(!error){// если нету ошибок
+			list = [// список корневых папок для поиска дочерних
+				{path: 'C:\\Program Files\\SHTRIH-M', filter: 'DrvFR'},
+				{path: 'C:\\Program Files (x86)\\SHTRIH-M', filter: 'DrvFR'},
+				{path: 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\ШТРИХ-М', filter: 'ФР'}
+			];
+			for(var i = 0, iLen = list.length; i < iLen && !error; i++){
+				item = list[i];// получаем очередной элимент
+				if(fso.folderExists(item.path)){// если папка существует
+					node = fso.getFolder(item.path);
+					nodes = new Enumerator(node.subFolders);
+					while(!nodes.atEnd()){// пока не достигнут конец списка
+						node = nodes.item();// получаем очередной элимент
+						if(~node.name.indexOf(item.filter)){// содержит строку фильтра
+							try{// пробуем удалить полученный элимент
+								node.Delete(true);
+							}catch(e){};
+						};
+						nodes.moveNext();
+					};
+				};
+			};
 		};
 		// устанавливаем последнюю версию драйвера
 		if(!error){// если нету ошибок
@@ -113,11 +137,17 @@ cscript update.min.js [[[<install>] <config>] <license>]
 	if(!error && config && isConnect){// если нужно выполнить
 		driver.Password = 30;
 		list = [// изменяемые поля таблицы
+			// тип и режим кассы
+			{table:  1, row: 1, field:  7, value: 2},// отрезка чека
+			// сетевой адрес
+			{table: 16, row: 1, field:  1, value: 0},// static ip
 			// региональные настройки
 			{table: 17, row: 1, field:  3, value: 2},// режим исчисления скидок
 			{table: 17, row: 1, field: 10, value: 1},// печать параметров офд в чеках
 			{table: 17, row: 1, field: 12, value: 7},// печать реквизитов пользователя
 			{table: 17, row: 1, field: 17, value: 2},// формат фд
+			// fiscal storage
+			{table: 18, row: 1, field:  7, value: 'ГБУ МО "Мособлмедсервис"'},// user
 			// удаленный мониторинг и администрирование
 			{table: 23, row: 1, field:  1, value: 1},// работать с сервером ско
 			{table: 23, row: 1, field:  5, value: 1},// разрешить автообновление
