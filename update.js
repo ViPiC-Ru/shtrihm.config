@@ -1,4 +1,4 @@
-/*! 0.2.1 обновление касс в связи со сменой ндс
+/*! 0.2.5 обновление касс и изменение настроек
 
 cscript update.min.js [[[<install>] <config>] <license>]
 
@@ -146,6 +146,7 @@ cscript update.min.js [[[<install>] <config>] <license>]
 			{table: 17, row: 1, field: 10, value: 1},// печать параметров офд в чеках
 			{table: 17, row: 1, field: 12, value: 7},// печать реквизитов пользователя
 			{table: 17, row: 1, field: 17, value: 2},// формат фд
+			{table: 17, row: 1, field: 39, value: 1},// новые заголовки реквизитов
 			// fiscal storage
 			{table: 18, row: 1, field:  7, value: 'ГБУ МО "Мособлмедсервис"'},// user
 			// удаленный мониторинг и администрирование
