@@ -1,4 +1,4 @@
-/*! 0.2.5d обновление касс и изменение настроек
+/*! 0.2.6 обновление касс и изменение настроек
 
 cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 
@@ -13,13 +13,13 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 
 (function (wsh, undefined) {// замыкаем что бы не сорить глобалы
 	var value, key, list, data, name, char, command, shell, fso, stream, network, driver, item,
-		node, nodes, template, flag, image, install, license, variable, logotype, table,
-		silent = false, dLine = '\r\n', dValue = '\t', dCell = ',', error = 0;
+		node, nodes, flag, image, install, license, variable, logotype, table, template,
+		dec2hex, silent = false, dLine = '\r\n', dValue = '\t', dCell = ',', error = 0;
 
 	/**
 	 * Заполняет шаблон данными из объекта.
 	 * @param {string} pattern - Шаблона для подстановки данных.
-	 * @param {string} data -  Объект с данными для подстановки.
+	 * @param {string} data - Объект с данными для подстановки.
 	 * @returns {string} Заполненный шаблон с данными.
 	 */
 
@@ -44,6 +44,28 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 			};
 		};
 		return fragments.join('');
+	};
+
+	/**
+	 * Переводит число из десятичного в шестнадцатеричное.
+	 * @param {number} dec - Число в десячичной записе.
+	 * @param {number} [length] - Длина возврашаемого значения.
+	 * @returns {string} Число в шестнадцатеричной записе.
+	 */
+
+	dec2hex = function (dec, length) {
+		var value, hex = '', chars = '0123456789ABCDEF';
+
+		value = Number(dec);
+		// переводим число в другую систему
+		do {// циклически делим число на основание
+			hex = chars.charAt(value % chars.length) + hex;
+			value = Math.floor(value / chars.length);
+		} while (value);
+		// добовляем ведущие нули
+		while (hex.length < length) hex = chars.charAt(0) + hex;
+		//возвращаем результат
+		return hex;
 	};
 
 	shell = new ActiveXObject('WScript.Shell');
@@ -130,14 +152,15 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		// показываем начальное сообщение пользователю
 		if (!error) {// если нету ошибок
 			value = // сообщение для пользователя
-				'Через минуту на компьютер будет установлено обновление для ККМ. ' +
+				'Через 2 минуты на компьютер будет установлено обновление для ККМ. ' +
 				'Нужно будет закрыть кассу программы еФарма. Закрывать смену при этом не нужно. ' +
-				'Установка займёт три минуты. После этого вы сможете работать.';
+				'Установка займёт 3 минуты. После этого вы сможете работать.';
 			command = 'shutdown /r /t 60 /c "' + value + '"';
 			shell.run(command, 0, false);
 			wsh.sleep(30 * 1000);
 			command = 'shutdown /a';
 			shell.run(command, 0, true);
+			wsh.sleep(90 * 1000);
 		};
 		// принудительно завершаем работу кассовой програмы
 		if (!error) {// если нету ошибок
@@ -303,7 +326,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (!error) {// если нету ошибок
 			image = new ActiveXObject('WIA.ImageFile');
 			image.loadFile(logotype);// читаем файл
-			data = '';// строка с данными об картинке
+			list = [];// список значений для байтов
 			for (var y = 0, yLen = 128; y < yLen; y++) {// высота
 				for (var x = 0, xLen = 512; x < xLen; x++) {// ширина
 					// вычисляем значение пиксела
@@ -314,14 +337,14 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 					// формируем данные 8 пиксилов
 					char = x % 8 ? char : 0;
 					char += value ? Math.pow(2, x % 8) : 0;
-					if (7 == x % 8) data += String.fromCharCode(char);
+					if (7 == x % 8) list.push(dec2hex(char, 2));
 				};
 			};
 		};
 		// загружаем изображение
 		if (!error) {// если нету ошибок
-			driver.LineNumber = 1;
-			driver.LineData = data;
+			driver.LineNumber = 0;
+			driver.LineDataHex = list.join(' ');
 			driver.WideLoadLineData();
 			if (!driver.ResultCode) {// если изображение загружено
 			} else error = 15;
