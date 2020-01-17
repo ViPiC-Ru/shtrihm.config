@@ -1,19 +1,19 @@
-/*! 0.2.6 обновление касс и изменение настроек
+/*! 0.2.7 обновление касс и изменение настроек
 
 cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 
 <install>	- относительный путь к файлу установки драйвера или false для пропуска.
-<license>	- относительный путь к файлу лицензий для касс или false для пропуска.
-<variable>	- относительный путь к файлу с переменными или false для пропуска.
-<logotype>	- относительный путь к BMP файлу логотипа для печати вверху чека.
-<table>		- относительный путь к файлу таблиц для импорта в формате Штрих-М.
+<license>	- шаблон пути к файлу лицензий для касс или false для пропуска.
+<variable>	- шаблон пути к файлу с переменными или false для пропуска.
+<logotype>	- шаблон пути к BMP файлу логотипа для печати вверху чека.
+<table>		- шаблон пути к файлу таблиц для импорта в формате Штрих-М.
 <silent>	- выполнять тихую установку без остановки работы пользователя
 
  */
 
 (function (wsh, undefined) {// замыкаем что бы не сорить глобалы
 	var value, key, list, data, name, char, command, shell, fso, stream, network, driver, item,
-		node, nodes, flag, image, install, license, variable, logotype, table, template,
+		node, nodes, flag, image, install, license, variable, logotype, table, template, model,
 		dec2hex, silent = false, dLine = '\r\n', dValue = '\t', dCell = ',', error = 0;
 
 	/**
@@ -75,7 +75,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (0 < wsh.arguments.length) {// если передан параметр
 			value = wsh.arguments(0);
 			if (value && 'false' != value.toLowerCase()) {// если задано
-				install = fso.getAbsolutePathName(value);
+				install = value;
 			};
 		};
 	};
@@ -84,7 +84,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (1 < wsh.arguments.length) {// если передан параметр
 			value = wsh.arguments(1);
 			if (value && 'false' != value.toLowerCase()) {// если задано
-				license = fso.getAbsolutePathName(value);
+				license = value;
 			};
 		};
 	};
@@ -93,7 +93,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (2 < wsh.arguments.length) {// если передан параметр
 			value = wsh.arguments(2);
 			if (value && 'false' != value.toLowerCase()) {// если задано
-				variable = fso.getAbsolutePathName(value);
+				variable = value;
 			};
 		};
 	};
@@ -102,7 +102,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (3 < wsh.arguments.length) {// если передан параметр
 			value = wsh.arguments(3);
 			if (value && 'false' != value.toLowerCase()) {// если задано
-				logotype = fso.getAbsolutePathName(value);
+				logotype = value;
 			};
 		};
 	};
@@ -111,7 +111,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (4 < wsh.arguments.length) {// если передан параметр
 			value = wsh.arguments(4);
 			if (value && 'false' != value.toLowerCase()) {// если задано
-				table = fso.getAbsolutePathName(value);
+				table = value;
 			};
 		};
 	};
@@ -121,31 +121,6 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 			value = wsh.arguments(5);
 			silent = 'true' == value.toLowerCase();
 		};
-	};
-	// проверяем наличее файла установки драйвера
-	if (!error && install) {// если нужно выполнить
-		if (fso.fileExists(install)) {// если файл существует
-		} else error = 1;
-	};
-	// проверяем наличее файла лицензий для касс
-	if (!error && license) {// если нужно выполнить
-		if (fso.fileExists(license)) {// если файл существует
-		} else error = 2;
-	};
-	// проверяем наличее файла с переменными
-	if (!error && variable) {// если нужно выполнить
-		if (fso.fileExists(variable)) {// если файл существует
-		} else error = 3;
-	};
-	// проверяем наличее файла логотипа
-	if (!error && logotype) {// если нужно выполнить
-		if (fso.fileExists(logotype)) {// если файл существует
-		} else error = 4;
-	};
-	// проверяем наличее файла таблиц для импорта
-	if (!error && table) {// если нужно выполнить
-		if (fso.fileExists(table)) {// если файл существует
-		} else error = 5;
 	};
 	// прерываем работу пользователя
 	if (!silent) {// если можно прервать работу пользователя
@@ -171,6 +146,14 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 	};
 	// выполняем удаление и установку драйвера
 	if (install) {// если нужно обновить драйвер
+		// проверяем наличее файла установки драйвера
+		if (!error) {// если нужно выполнить
+			value = install;// получаем значение
+			value = fso.getAbsolutePathName(value);
+			if (fso.fileExists(value)) {// если файл существует
+				install = value;
+			} else error = 1;
+		};
 		// удаляем все установленные версии драйвера
 		if (!error) {// если нету ошибок
 			value = 'all "Штрих" "Драйвер ФР" "" "/verysilent"';
@@ -206,7 +189,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 			command = '"' + install + '" /verysilent';
 			value = shell.run(command, 0, true);
 			if (!value) {// если комманда выполнена успешно
-			} else error = 6;
+			} else error = 2;
 		};
 	};
 	// готовимся к взаимодействию с кассой
@@ -215,7 +198,7 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 		if (!error) {// если нету ошибок
 			try {// пробуем подключиться к кассе
 				driver = new ActiveXObject('Addin.DrvFR');
-			} catch (e) { error = 7; };
+			} catch (e) { error = 3; };
 		};
 		// подключаемся к кассе
 		if (!error) {// если нету ошибок
@@ -223,20 +206,36 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 			driver.GetECRStatus();
 			switch (driver.ResultCode) {
 				case 0: break;				// ккм доступна
-				case -1: error = 8; break;	// ккм не подключена
-				case -3: error = 9; break;	// ккм занята
-				default: error = 10;		// другие ошибки
+				case -1: error = 4; break;	// ккм не подключена
+				case -3: error = 5; break;	// ккм занята
+				default: error = 6;			// другие ошибки
 			};
+		};
+		// получаем идентификатор модели
+		if (!error) {// если нету ошибок
+			driver.GetDeviceMetrics();
+			if (!driver.ResultCode) {// если изображение загружено
+				model = driver.UModel;
+			} else error = 7;
 		};
 	};
 	// выполняем активацию лицензии
 	if (license) {// если нужно активировать лицензию
+		// проверяем наличее файла лицензий для касс
+		if (!error) {// если нужно выполнить
+			value = license;// получаем значение
+			value = template(value, { model: model });
+			value = fso.getAbsolutePathName(value);
+			if (fso.fileExists(value)) {// если файл существует
+				license = value;
+			} else error = 8;
+		};
 		// получаем содержимое файла
 		if (!error) {// если нету ошибок
 			stream = fso.openTextFile(license, 1);
 			if (!stream.atEndOfStream) {// если файл не пуст
 				data = stream.readAll();
-			} else error = 11;
+			} else error = 9;
 			stream.close();
 		};
 		// преобразовываем содержимое в список
@@ -269,30 +268,39 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 						driver.WriteFeatureLicenses();
 						if (!driver.ResultCode) {// если лицензия активирована
 							flag = true;// лицензия активирована
-						} else error = 13;
+						} else error = 11;
 					};
 				};
-			} else error = 12;
+			} else error = 10;
 		};
 		// проверяем активирована ли лицензия
 		if (!error) {// если нету ошибок
 			if (flag) {// если лицензия активирована
-			} else error = 14;
+			} else error = 12;
 		};
 	};
 	// получаем значение переменных из файла
 	if (variable) {// если нужно загрузить переменные
-		// получаем имя копьютера для поиска переменных
+		// получаем имя компьютера для поиска переменных
 		if (!error) {// если нету ошибок
 			network = new ActiveXObject('WScript.Network');
 			name = network.computerName.toLowerCase();
+		};
+		// проверяем наличее файла с переменными
+		if (!error) {// если нужно выполнить
+			value = variable;// получаем значение
+			value = template(value, { model: model });
+			value = fso.getAbsolutePathName(value);
+			if (fso.fileExists(value)) {// если файл существует
+				variable = value;
+			} else error = 13;
 		};
 		// получаем содержимое файла
 		if (!error) {// если нету ошибок
 			stream = fso.openTextFile(variable, 1);
 			if (!stream.atEndOfStream) {// если файл не пуст
 				data = stream.readAll();
-			} else error = 15;
+			} else error = 14;
 			stream.close();
 			variable = null;
 		};
@@ -322,6 +330,15 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 	};
 	// добавляем логотип в клише
 	if (logotype) {// если нужно выполнить
+		// проверяем наличее файла логотипа
+		if (!error) {// если нужно выполнить
+			value = logotype;// получаем значение
+			value = template(value, { model: model });
+			value = fso.getAbsolutePathName(value);
+			if (fso.fileExists(value)) {// если файл существует
+				logotype = value;
+			} else error = 15;
+		};
 		// получаем данные логотипа
 		if (!error) {// если нету ошибок
 			image = new ActiveXObject('WIA.ImageFile');
@@ -347,17 +364,26 @@ cscript update.min.js <install> <license> <variable> <logotype> <table> <silent>
 			driver.LineDataHex = list.join(' ');
 			driver.WideLoadLineData();
 			if (!driver.ResultCode) {// если изображение загружено
-			} else error = 15;
+			} else error = 16;
 		};
 	};
 	// добавляем данные в таблицы
 	if (table) {// если нужно выполнить
+		// проверяем наличее файла таблиц для импорта
+		if (!error) {// если нужно выполнить
+			value = table;// получаем значение
+			value = template(value, { model: model });
+			value = fso.getAbsolutePathName(value);
+			if (fso.fileExists(value)) {// если файл существует
+				table = value;
+			} else error = 17;
+		};
 		// получаем содержимое файла
 		if (!error) {// если нету ошибок
 			stream = fso.openTextFile(table, 1, false, -1);
 			if (!stream.atEndOfStream) {// если файл не пуст
 				data = stream.readAll();
-			} else error = 16;
+			} else error = 18;
 			stream.close();
 		};
 		// преобразовываем содержимое в список
