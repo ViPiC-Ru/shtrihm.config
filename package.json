@@ -1,0 +1,8 @@
+{
+    "name": "shtrihm-config",
+    "version": "1.0.0",
+    "description": "Расширенная настройка касс",
+    "main": "config.js",
+    "author": "ViPiC",
+    "license": "GPL-3.0"
+}
